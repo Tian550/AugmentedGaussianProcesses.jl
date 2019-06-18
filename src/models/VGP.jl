@@ -37,14 +37,7 @@ mutable struct VGP{L<:Likelihood,I<:Inference,T<:Real,V<:AbstractVector{T}} <: A
     nLatent::Int64 # Number pf latent GPs
     IndependentPriors::Bool # Use of separate priors for each latent GP
     nPrior::Int64 # Equal to 1 or nLatent given IndependentPriors
-    μ::LatentArray{V}
-    Σ::LatentArray{Symmetric{T,Matrix{T}}}
-    η₁::LatentArray{V}
-    η₂::LatentArray{Symmetric{T,Matrix{T}}}
-    μ₀::LatentArray{PriorMean{T}}
-    Knn::LatentArray{Symmetric{T,Matrix{T}}}
-    invKnn::LatentArray{Symmetric{T,Matrix{T}}}
-    kernel::LatentArray{Kernel{T}}
+    latent_gps::LatentArray{_VGP{T,V}}
     likelihood::Likelihood{T}
     inference::Inference{T}
     verbose::Int64 #Level of printing information
@@ -64,30 +57,45 @@ function VGP(X::AbstractArray{T1,N1},y::AbstractArray{T2,N2},kernel::Union{Kerne
 
             nPrior = IndependentPriors ? nLatent : 1
             nFeature = nSample = size(X,1); nDim = size(X,2);
-            kernel = ArrayType([deepcopy(kernel) for _ in 1:nPrior])
-
-            μ = LatentArray([zeros(T1,nFeature) for _ in 1:nLatent]); η₁ = deepcopy(μ)
-            Σ = LatentArray([Symmetric(Matrix(Diagonal(one(T1)*I,nFeature))) for _ in 1:nLatent]);
-            η₂ = -0.5*inv.(Σ);
-            μ₀ = []
-            if typeof(mean) <: Real
-                μ₀ = [ConstantMean(mean) for _ in 1:nPrior]
-            elseif typeof(mean) <: AbstractVector{<:Real}
-                μ₀ = [EmpiricalMean(mean) for _ in 1:nPrior]
-            else
-                μ₀ = [mean for _ in 1:nPrior]
+            gps = LatentArray(undef,nLatent)
+            for i in 1:nLatent
+                μ = zeros(T1,nFeature); η₁ = zeros(T1,nFeature)
+                Σ = Symmetric(Matrix(Diagonal(one(T1)*I,nFeature)))
+                η₂ = -0.5*inv(Σ)
+                μ₀ = mean
+                if typeof(mean) <: Real
+                    μ₀ = ConstantMean(mean)
+                elseif typeof(mean) <: AbstractVector{<:Real}
+                    μ₀ = EmpiricalMean(mean)
+                end
+                K = kernelmatrix(X,kernel) + T1(jitter)*getvariance(kernel)*I
+                gps[i] = _VGP(X,μ,Σ,kernel,K,μ₀,η₁,η₂)
             end
-            Knn = LatentArray([deepcopy(Σ[1]) for _ in 1:nPrior]);
-            invKnn = copy(Knn)
-
             likelihood = init_likelihood(likelihood,inference,nLatent,nSample)
             inference = init_inference(inference,nLatent,nSample,nSample,nSample)
 
             VGP{LikelihoodType,InferenceType,T1,ArrayType{T1}}(X,y,
                     nFeature, nDim, nFeature, nLatent,
-                    IndependentPriors,nPrior,μ,Σ,η₁,η₂,
-                    μ₀,Knn,invKnn,kernel,likelihood,inference,
+                    IndependentPriors,nPrior,
+                    gps,likelihood,inference,
                     verbose,Autotuning,atfrequency,false)
+end
+
+function Base.getindex(model::AbstractGP,i::Int)
+    @assert i > 0 && i <= model.nLatent "Trying to access latent GP $i in a model with $(model.nLatent) latent GPs"
+    return gp.latent_gps[i]
+end
+
+function Base.getindex(model::AbstractGP,s::AbstractString)
+    if s == "Likelihood"
+        return model.likelihood
+    elseif s == "Inference"
+        return model.inference
+    elseif s == "GPs"
+        return model.latent_gps
+    else
+        @error "Key $s is not valid, try `Likelihood`, `Inference` or `GP`"
+    end
 end
 
 function Base.show(io::IO,model::VGP{<:Likelihood,<:Inference,T}) where T

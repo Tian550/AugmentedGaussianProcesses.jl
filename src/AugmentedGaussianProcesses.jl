@@ -66,6 +66,7 @@ abstract type Likelihood{T<:Real}  end
 const LatentArray = Vector #For future optimization : How collection of latent GP parameters and local variables are stored
 include("prior/meanprior.jl")
 
+include("models/_GP.jl")
 include("models/AbstractGP.jl")
 include("models/GP.jl")
 include("models/VGP.jl")
