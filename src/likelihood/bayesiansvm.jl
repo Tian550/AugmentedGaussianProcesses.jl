@@ -69,7 +69,7 @@ end
 
 
 function local_updates!(model::VGP{BayesianSVM{T},<:AnalyticVI}) where {T<:Real}
-    model.likelihood.ω .= broadcast((μ,Σ,y)->abs2.(one(T) .- y.*μ) + Σ ,model.μ,diag.(model.Σ),model.y)
+    model.likelihood.ω .= broadcast((μ,Σ,y)->abs2.(one(T) .- y.*μ) + Σ ,mean.(model),diag.(cov.(model)),model.y)
     model.likelihood.θ .= broadcast(b->one(T)./sqrt.(b),model.likelihood.ω)
 end
 

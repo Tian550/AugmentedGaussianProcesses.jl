@@ -29,12 +29,12 @@ function one_of_K_mapping(y)
     return Y,y_values,ind_values,y_class
 end
 
-function compute_proba(l::MultiClassLikelihood{T},μ::AbstractVector{<:AbstractVector{T}},σ²::AbstractVector{<:AbstractVector{T}},nSamples::Integer=200) where {T<:Real}
-    K = length(μ)
-    n = length(μ[1])
-    μ = hcat(μ...)
+function compute_proba(l::MultiClassLikelihood{T},μ_and_σ²::Vararg{Tuple{<:AbstractVector{T},<:AbstractVector{T}}};nSamples::Integer=200) where {T<:Real}
+    K = length(μ_and_σ²)
+    n = length(μ_and_σ²[1][1])
+    μ = hcat(getindex.(μ_and_σ²,1)...)
     μ = [μ[i,:] for i in 1:n]
-    σ² = hcat(σ²...)
+    σ² = hcat(getindex.(μ_and_σ²,1)...)
     σ² = [σ²[i,:] for i in 1:n]
     pred = zeros(T,n,K)
     for i in 1:n

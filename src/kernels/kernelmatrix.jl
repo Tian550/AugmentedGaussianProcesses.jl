@@ -5,6 +5,7 @@ function kernelmatrix(X1::AbstractArray{T1},X2::AbstractArray{T2},kernel::Kernel
     return lmul!(v,map!(kappa(kernel),K,K))
 end
 
+kernelmatrix(kernel::Kernel,X1::AbstractArray{<:Real},X2::AbstractArray{<:Real}) = kernelmatrix(X1,X2,kernel)
 """Compute the covariance matrix between the matrix X1 and X2 with the covariance function `kernel` in preallocated matrix K"""
 function kernelmatrix!(K::AbstractArray{T1},X1::AbstractArray{T2},X2::AbstractArray{T3},kernel::Kernel) where {T1<:Real,T2<:Real,T3<:Real}
     (n1,n2) = size(K)
@@ -16,6 +17,8 @@ function kernelmatrix!(K::AbstractArray{T1},X1::AbstractArray{T2},X2::AbstractAr
     return lmul!(v,K)
 end
 
+kernelmatrix!(K::AbstractArray{<:Real},kernel::Kernel,X1::AbstractArray{<:Real},X2::AbstractArray{<:Real}) = kernelmatrix!(K,X1,X2,kernel)
+
 """Compute the covariance matrix of the matrix X, optionally only compute the diagonal terms"""
 function kernelmatrix(X::AbstractArray{T1},kernel::Kernel;diag::Bool=false) where {T1<:Real}
     if diag
@@ -26,7 +29,7 @@ function kernelmatrix(X::AbstractArray{T1},kernel::Kernel;diag::Bool=false) wher
     # return v.*map(kappa(kernel),K)
     return v*map!(kappa(kernel),K,K)
 end
-
+kernelmatrix(kernel::Kernel,X1::AbstractArray{<:Real};diag::Bool=false) = kernelmatrix(X1,kernel,diag=diag)
 """Compute the covariance matrix of the matrix X in preallocated matrix K, optionally only compute the diagonal terms"""
 function kernelmatrix!(K::AbstractArray{T1},X::AbstractArray{T2},kernel::Kernel; diag::Bool=false) where {T1<:Real,T2<:Real}
     if diag
@@ -40,7 +43,7 @@ function kernelmatrix!(K::AbstractArray{T1},X::AbstractArray{T2},kernel::Kernel;
     map!(kappa(kernel),K,K)
     return lmul!(v,K)
 end
-
+kernelmatrix!(K::AbstractArray{<:Real},kernel::Kernel,X1::AbstractArray{<:Real},X2::AbstractArray{<:Real},diag::Bool=false) = kernelmatrix(K,X1,kernel,diag=diag)
 """Compute only the diagonal elements of the covariance matrix"""
 function kerneldiagmatrix(X::AbstractArray{T1},kernel::Kernel) where {T1<:Real}
     n = size(X,1)
@@ -52,6 +55,7 @@ function kerneldiagmatrix(X::AbstractArray{T1},kernel::Kernel) where {T1<:Real}
     end
     return lmul!(v,K)
 end
+kerneldiagmatrix(kernel::Kernel,X1::AbstractArray{<:Real}) = kerneldiagmatrix(X1,kernel)
 
 """Compute only the diagonal elements of the covariance matrix in preallocated vector K"""
 function kerneldiagmatrix!(K::AbstractVector{T1},X::AbstractArray{T2},kernel::Kernel) where {T1<:Real,T2<:Real}
@@ -63,7 +67,7 @@ function kerneldiagmatrix!(K::AbstractVector{T1},X::AbstractArray{T2},kernel::Ke
     end
     return lmul!(v,K)
 end
-
+kerneldiagmatrix!(K::AbstractVector{<:Real},kernel::Kernel,X1::AbstractArray{<:Real}) = kerneldiagmatrix!(K,X1,kernel)
 
 """Remapping of the gradients into a matrix with only 1 column and 1 row being non-zero"""
 function CreateColumnRowMatrix(n::Int,iter::Int,gradient::AbstractVector{T1}) where {T1<:Real}

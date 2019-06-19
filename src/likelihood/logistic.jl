@@ -65,7 +65,7 @@ end
 ### Local Updates Section ###
 
 function local_updates!(model::VGP{<:LogisticLikelihood,<:AnalyticVI})
-    model.likelihood.c .= broadcast((μ,Σ)->sqrt.(Σ+abs2.(μ)),model.μ,diag.(model.Σ))
+    model.likelihood.c .= broadcast((μ,Σ)->sqrt.(Σ+abs2.(μ)),mean.(model),diag.(cov.(model)))
     model.likelihood.θ .= broadcast(c->0.5*tanh.(0.5*c)./c,model.likelihood.c)
 end
 
@@ -76,7 +76,7 @@ end
 
 function sample_local!(model::VGP{<:LogisticLikelihood,<:GibbsSampling})
     pg = PolyaGammaDist()
-    model.likelihood.θ .= broadcast((μ::AbstractVector{<:Real})->draw.([pg],[1.0],μ),model.μ)
+    model.likelihood.θ .= broadcast((μ::AbstractVector{<:Real})->draw.([pg],[1.0],μ),mean.(model))
     return nothing
 end
 

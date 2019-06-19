@@ -40,11 +40,13 @@ using DataFrames
 using Distributions
 using LinearAlgebra
 using StatsBase
+using Statistics
 using StatsFuns
 using SpecialFunctions
 using Expectations
 using Random
-import Base: convert, show, copy
+import Base: convert, show, copy, length, getindex, iterate
+import Statistics: mean, cov
 #Exported modules
 export KMeansModule
 #Useful functions

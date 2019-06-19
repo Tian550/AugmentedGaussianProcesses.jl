@@ -59,17 +59,15 @@ function VGP(X::AbstractArray{T1,N1},y::AbstractArray{T2,N2},kernel::Union{Kerne
             nFeature = nSample = size(X,1); nDim = size(X,2);
             gps = LatentArray(undef,nLatent)
             for i in 1:nLatent
-                μ = zeros(T1,nFeature); η₁ = zeros(T1,nFeature)
+                μ = zeros(T1,nFeature);
                 Σ = Symmetric(Matrix(Diagonal(one(T1)*I,nFeature)))
-                η₂ = -0.5*inv(Σ)
                 μ₀ = mean
                 if typeof(mean) <: Real
                     μ₀ = ConstantMean(mean)
                 elseif typeof(mean) <: AbstractVector{<:Real}
                     μ₀ = EmpiricalMean(mean)
                 end
-                K = kernelmatrix(X,kernel) + T1(jitter)*getvariance(kernel)*I
-                gps[i] = _VGP(X,μ,Σ,kernel,K,μ₀,η₁,η₂)
+                gps[i] = _VGP(X,μ,Σ,kernel,μ₀)
             end
             likelihood = init_likelihood(likelihood,inference,nLatent,nSample)
             inference = init_inference(inference,nLatent,nSample,nSample,nSample)
@@ -81,9 +79,23 @@ function VGP(X::AbstractArray{T1,N1},y::AbstractArray{T2,N2},kernel::Union{Kerne
                     verbose,Autotuning,atfrequency,false)
 end
 
-function Base.getindex(model::AbstractGP,i::Int)
+function Base.getindex(model::AbstractGP,i::Integer)
     @assert i > 0 && i <= model.nLatent "Trying to access latent GP $i in a model with $(model.nLatent) latent GPs"
-    return gp.latent_gps[i]
+    return model.latent_gps[i]
+end
+
+function Base.iterate(model::AbstractGP, i=1)
+    iterate(model.latent_gps,i)
+end
+
+function Base.length(model::AbstractGP)
+    model.nLatent
+end
+
+function Base.summary(io::IO,model::AbstractGP)
+    for i in 1:length(model)
+        show(model[i])
+    end
 end
 
 function Base.getindex(model::AbstractGP,s::AbstractString)

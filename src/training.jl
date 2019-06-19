@@ -81,8 +81,7 @@ end
 
 function computeMatrices!(model::VGP{<:Likelihood,<:Inference,T}) where {T<:Real}
     if model.inference.HyperParametersUpdated
-        model.Knn .= Symmetric.(KernelModule.kernelmatrix.([model.X],model.kernel) .+ getvariance.(model.kernel).*T(jitter).*[I])
-        model.invKnn .= Symmetric.(inv.(cholesky.(model.Knn)))
+        compute_self_kernelmatrices.(model.latent_gps)
     end
 end
 

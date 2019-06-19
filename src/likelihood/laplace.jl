@@ -84,7 +84,7 @@ end
 ###############################################################################
 
 function local_updates!(model::VGP{<:LaplaceLikelihood,<:AnalyticVI})
-    model.likelihood.b .= broadcast((Σ,μ,y)->(Σ+abs2.(μ-y)),diag.(model.Σ),model.μ,model.y)
+    model.likelihood.b .= broadcast((Σ,μ,y)->(Σ+abs2.(μ-y)),diag.(cov.(model)),mean.(model),model.y)
     model.likelihood.θ .= broadcast((a,b)->sqrt(a)./sqrt.(b),model.likelihood.a,model.likelihood.b)
 end
 

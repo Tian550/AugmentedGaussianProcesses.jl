@@ -22,44 +22,21 @@ Compute the mean of the predicted latent distribution of `f` on `X_test` for the
 
 Return also the variance if `covf=true` and the full covariance if `fullcov=true`
 """
-function predict_f(model::VGP,X_test::AbstractMatrix{T};covf::Bool=true,fullcov::Bool=false) where T
-    k_star = kernelmatrix.([X_test],[model.X],model.kernel)
-    μf = k_star.*model.invKnn.*model.μ
-    if !covf
-        return model.nLatent == 1 ? μf[1] : μf
-    end
-    A = model.invKnn.*([I].-model.Σ.*model.invKnn)
-    σ²f = []
-    if fullcov
-        k_starstar = kernelmatrix.([X_test],model.kernel)
-        σ²f = Symmetric.(k_starstar .- k_star.*A.*transpose.(k_star) .+ convert(T,Jittering()).*[I])
+function predict_f(model::AbstractGP,X_test::AbstractMatrix{T};covf::Bool=true,fullcov::Bool=false) where T
+    if covf
+        if fullcov
+            μ_and_Σ = cond_mean_and_cov.(model,[X_test])
+            model.nLatent == 1 ? μ_and_Σ[1] : μ_and_Σ
+        else
+            μ_and_σ² = cond_mean_and_diagcov.(model,[X_test])
+            model.nLatent == 1 ? μ_and_σ²[1] : μ_and_σ²
+        end
     else
-        k_starstar = kerneldiagmatrix.([X_test],model.kernel)
-        σ²f = k_starstar .- opt_diag.(k_star.*A,k_star)
+        μ = cond_mean.(model,[X_test])
+        model.nLatent == 1 ? μ[1] : μ
     end
-    return model.nLatent == 1 ? (μf[1],σ²f[1]) : (μf,σ²f)
 end
 
-"""
-Compute the mean of the predicted latent distribution of f on `X_test` for a sparse GP `model`
-Return also the variance if `covf=true` and the full covariance if `fullcov=true`
-"""
-function predict_f(model::SVGP,X_test::AbstractMatrix{T};covf::Bool=true,fullcov::Bool=false) where T
-    k_star = kernelmatrix.([X_test],model.Z,model.kernel)
-    μf = k_star.*model.invKmm.*model.μ
-    if !covf
-        return model.nLatent == 1 ? μf[1] : μf
-    end
-    A = model.invKmm.*([I].-model.Σ.*model.invKmm)
-    if fullcov
-        k_starstar = kernelmatrix.([X_test],model.kernel)
-        σ²f = Symmetric.(k_starstar .- k_star.*A.*transpose.(k_star))
-    else
-        k_starstar = kerneldiagmatrix.([X_test],model.kernel)
-        σ²f = k_starstar .- opt_diag.(k_star.*A,k_star)
-    end
-    return model.nLatent == 1 ? (μf[1],σ²f[1]) : (μf,σ²f)
-end
 
 function predict_f(model::VGP{<:Likelihood,<:GibbsSampling},X_test::AbstractMatrix{T};covf::Bool=true,fullcov::Bool=false) where T
     k_star = kernelmatrix.([X_test],[model.X],model.kernel)
@@ -80,11 +57,11 @@ function predict_f(model::VGP{<:Likelihood,<:GibbsSampling},X_test::AbstractMatr
 end
 
 function predict_f(model::AbstractGP,X_test::AbstractVector{T};covf::Bool=false,fullcov::Bool=false) where T
-    predict_f(model,reshape(X_test,length(X_test),1),covf=covf,fullcov=fullcov)
+    predict_f(model,reshape(X_test,:,1),covf=covf,fullcov=fullcov)
 end
 
 function predict_y(model::AbstractGP,X_test::AbstractVector)
-    return predict_y(model,reshape(X_test,length(X_test),1))
+    return predict_y(model,reshape(X_test,:,1))
 end
 
 """
@@ -129,7 +106,7 @@ end
 
 
 function proba_y(model::AbstractGP,X_test::AbstractVector{T}) where {T<:Real}
-    return proba_y(model,reshape(X_test,length(X_test),1))
+    return proba_y(model,reshape(X_test,:,1))
 end
 
 """
@@ -142,8 +119,8 @@ Return the probability distribution p(y_test|model,X_test) :
     - Dataframe with columns and probability per class for multi-class classification
 """
 function proba_y(model::AbstractGP,X_test::AbstractMatrix{T}) where {T<:Real}
-    μ_f,Σ_f = predict_f(model,X_test,covf=true)
-    compute_proba(model.likelihood,μ_f,Σ_f)
+    μ_and_σ² = predict_f(model,X_test,covf=true)
+    compute_proba(model.likelihood,μ_and_σ²...)
 end
 
 function proba_y(model::VGP{<:MultiClassLikelihood,<:GibbsSampling},X_test::AbstractMatrix{T};nSamples::Int=200) where {T<:Real}
@@ -190,75 +167,4 @@ end
 
 function compute_proba(l::Likelihood{T},μ::AbstractVector{T},σ²::AbstractVector{}) where {T<:Real}
     @error "Non implemented for the likelihood $l"
-end
-
-# "Return the mean of likelihood p(y*=1|X,x*) via the probit link with a linear model"
-# function probitpredictproba(model::LinearModel,X_test::AbstractArray{T}) where {T<:Real}
-#     if model.Intercept
-#       X_test = [ones(T,size(X_test,1)) X_test]
-#     end
-#     n = size(X_test,1)
-#     pred = zeros(n)
-#     for i in 1:nTest
-#       pred[i] = cdf(Normal(),(dot(X_test[i,:],model.μ))/(dot(X_test[i,:],model.Σ*X_test[i,:])+1))
-#     end
-#     return pred
-# end
-
-"""Return the mean of likelihood p(y*=1|X,x*) via the probit link with a GP model"""
-function probitpredictproba(model::AbstractGP,X_test::AbstractArray{<:Real})
-    m_f,cov_f = predict_f(model,X_test,covf=true)
-    return broadcast((m,c)->cdf(Normal(),m/(c+1)),m_f,cov_f)
-end
-
-"Return the modified softmax likelihood given the latent functions"
-function sigma_max(f::Vector{T},index::Integer) where {T<:Real}
-    return logit(f[index])/sum(logit.(f))
-end
-
-"Return the modified softmax likelihood given the array of 'σ' and their sum (can be given via sumsig)"
-function mod_soft_max(σ::Vector{T},sumsig::T=zero(T)) where {T<:Real}
-    return sumsig == 0 ? σ./(sum(σ)) : σ./sumsig
-end
-
-
-"Return the gradient of the modified softmax likelihood given 'σ' and their sum (can be given via sumsig)"
-function grad_mod_soft_max(σ::Array{T,1},sumsig::T=zero(T)) where {T<:Real}
-    sumsig = sumsig == 0 ? sum(σ) : sumsig
-    shortened_sum = sumsig.-σ
-    sum_square = sumsig^2
-    base_grad = (σ-(σ.^2))./sum_square
-    n = size(σ,1)
-    grad = zeros(n,n)
-    for i in 1:n
-        for j in 1:n
-            if i==j
-                grad[i,i] = shortened_sum[i]*base_grad[i]
-            else
-                grad[i,j] = -σ[i]*base_grad[j]
-            end
-        end
-    end
-    return grad
-end
-
-"Return the hessian of the modified softmax likelihood given 'σ' and their sum (can be given via sumsig)"
-function hessian_mod_soft_max(σ::AbstractVector{T},sumsig::T=zero(T)) where {T<:Real}
-    sumsig = sumsig == 0 ? sum(σ) : sumsig
-    shortened_sum = sumsig.-σ
-    sum_square = sumsig^2
-    sum_cube = sumsig^3
-    base_grad = (σ-σ.^2).*((1.0.-2.0.*σ).*sum_square-2.0.*(σ-σ.^2)*sumsig)./sum_cube
-    n = size(σ,1)
-    grad = zeros(n,n)
-    for i in 1:n
-        for j in 1:n
-            if i==j
-                grad[i,i] = shortened_sum[i]*base_grad[i]
-            else
-                grad[i,j] = -σ[i]*base_grad[j]
-            end
-        end
-    end
-    return grad
 end

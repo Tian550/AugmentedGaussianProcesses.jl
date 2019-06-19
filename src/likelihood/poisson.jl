@@ -48,10 +48,10 @@ end
 ## Local Updates ##
 
 function local_updates!(model::VGP{PoissonLikelihood{T},<:AnalyticVI}) where {T<:Real}
-    model.likelihood.c .= broadcast((μ,Σ)->sqrt.(abs2.(μ) + Σ) ,model.μ,diag.(model.Σ))
-    model.likelihood.γ .= broadcast((c,μ,λ)->0.5*λ*exp.(-0.5*μ)./cosh.(0.5*c),model.likelihood.c,model.μ,model.likelihood.λ)
+    model.likelihood.c .= broadcast((μ,Σ)->sqrt.(abs2.(μ) + Σ) ,mean.(model),diag.(cov.(model)))
+    model.likelihood.γ .= broadcast((c,μ,λ)->0.5*λ*exp.(-0.5*μ)./cosh.(0.5*c),model.likelihood.c,mean.(model),model.likelihood.λ)
     model.likelihood.θ .= broadcast((y,γ,c)->(y+γ)./c.*tanh.(0.5*c),model.y,model.likelihood.γ,model.likelihood.c)
-    model.likelihood.λ .= broadcast((y,μ)->sum(y)./sum(logistic.(μ)),model.y,model.μ)
+    model.likelihood.λ .= broadcast((y,μ)->sum(y)./sum(logistic.(μ)),model.y,mean.(model))
 end
 
 function local_updates!(model::SVGP{PoissonLikelihood{T},<:AnalyticVI}) where {T<:Real}

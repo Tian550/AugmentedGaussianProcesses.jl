@@ -87,7 +87,7 @@ end
 ## Local Updates ##
 
 function local_updates!(model::VGP{<:StudentTLikelihood,<:AnalyticVI})
-    model.likelihood.β .= broadcast((Σ,μ,y)->0.5*(Σ+abs2.(μ-y).+model.likelihood.σ*model.likelihood.ν),diag.(model.Σ),model.μ,model.y)
+    model.likelihood.β .= broadcast((Σ,μ,y)->0.5*(Σ+abs2.(μ-y).+model.likelihood.σ*model.likelihood.ν),diag.(cov.(model)),mean.(model),model.y)
     model.likelihood.θ .= broadcast(β->model.likelihood.α./β,model.likelihood.β)
 end
 
@@ -97,7 +97,7 @@ function local_updates!(model::SVGP{<:StudentTLikelihood,<:AnalyticVI})
 end
 
 function sample_local!(model::VGP{<:StudentTLikelihood,<:GibbsSampling})
-    model.likelihood.β .= broadcast((μ::AbstractVector{<:Real},y)->rand.(InverseGamma.(model.likelihood.α,0.5*(abs2.(μ-y).+model.likelihood.σ*model.likelihood.ν))),model.μ,model.y)
+    model.likelihood.β .= broadcast((μ::AbstractVector{<:Real},y)->rand.(InverseGamma.(model.likelihood.α,0.5*(abs2.(μ-y).+model.likelihood.σ*model.likelihood.ν))),mean.(model),model.y)
     model.likelihood.θ .= broadcast(β->1.0./β,model.likelihood.β)
     return nothing
 end

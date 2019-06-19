@@ -71,10 +71,10 @@ end
 ## Local Updates Section ##
 
 function local_updates!(model::VGP{LogisticSoftMaxLikelihood{T},AnalyticVI{T},T,V}) where {T<:Real,V<:AbstractVector{T}}
-    model.likelihood.c .= broadcast((Σ::V,μ::V)->sqrt.(Σ.+abs2.(μ)),diag.(model.Σ),model.μ)
+    model.likelihood.c .= broadcast((Σ::V,μ::V)->sqrt.(Σ.+abs2.(μ)),diag.(cov.(model)),mean.(model))
     for _ in 1:2
         model.likelihood.γ .= broadcast((c::V,μ::V,ψα::V)->0.5/(model.likelihood.β[1])*exp.(ψα).*safe_expcosh.(-0.5*μ,0.5*c),
-                                    model.likelihood.c,model.μ,[digamma.(model.likelihood.α)])
+                                    model.likelihood.c,mean.(model),[digamma.(model.likelihood.α)])
         model.likelihood.α .= 1.0.+(model.likelihood.γ...)
     end
     model.likelihood.θ .= broadcast((y::BitVector,γ::V,c::V)->0.5*(y.+γ)./c.*tanh.(0.5*c),model.likelihood.Y,model.likelihood.γ,model.likelihood.c)
@@ -94,10 +94,10 @@ function local_updates!(model::SVGP{LogisticSoftMaxLikelihood{T},AnalyticVI{T},T
 end
 
 function sample_local!(model::VGP{<:LogisticSoftMaxLikelihood,<:GibbsSampling})
-    model.likelihood.γ .= broadcast(μ::AbstractVector{<:Real}->rand.(Poisson.(0.5*model.likelihood.α.*safe_expcosh.(-0.5*μ,0.5*μ))), model.μ)
+    model.likelihood.γ .= broadcast(μ::AbstractVector{<:Real}->rand.(Poisson.(0.5*model.likelihood.α.*safe_expcosh.(-0.5*μ,0.5*μ))), mean.(model))
     model.likelihood.α .= rand.(Gamma.(1.0.+(model.likelihood.γ...),1.0./model.likelihood.β))
     pg = PolyaGammaDist()
-    model.likelihood.θ .= broadcast((y::BitVector,γ::AbstractVector{<:Real},μ::AbstractVector{<:Real})->draw.([pg],y.+γ,μ),model.likelihood.Y,model.likelihood.γ,model.μ)
+    model.likelihood.θ .= broadcast((y::BitVector,γ::AbstractVector{<:Real},μ::AbstractVector{<:Real})->draw.([pg],y.+γ,μ),model.likelihood.Y,model.likelihood.γ,mean.(model))
     return nothing
 end
 
