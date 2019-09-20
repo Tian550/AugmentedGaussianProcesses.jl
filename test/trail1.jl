@@ -1,4 +1,4 @@
-using AugmentedGaussianProcesses
+using AugmentedGaussianProcesses; const AGP = AugmentedGaussianProcesses
 using Distributions;
 using Plots;
 using LinearAlgebra;
@@ -45,7 +45,7 @@ models = Vector{AbstractGP}(undef,length(σs))
 kernel = RBFKernel(1.0,variance=2.0)
 
 num_inducing = 50
-X,y = generate_mixture_data(σs[1])
+X,y = generate_mixture_data(σs[5])
 
 # m = VGP(X, y, kernel, LogisticHeavisideLikelihood(), AnalyticVI())
 # println("Training with data with noise 0.1")
@@ -61,14 +61,16 @@ X,y = generate_mixture_data(σs[1])
 # p2 = plotdata(X,y,0.8)
 # plot(p1,p2)
 # model = m
+elbo_t = []
 function cb(model,iter)
-    @show iter
+    # @info "Iter $iter" ELBO=ELBO(model) loglike=AGP.expecLogLikelihood(model) gausskl=AGP.GaussianKL(model) pgkl=AGP.PolyaGammaKL(model)
+    push!(elbo_t,ELBO(model))
 end
 
-m = SVGP(X, y, kernel,LogisticHeavisideLikelihood(),AnalyticSVI(10),num_inducing,verbose=3,optimizer=false)
+m = VGP(X, y, kernel,LogisticHeavisideLikelihood(),AnalyticVI(),verbose=3,optimizer=false)
 
-@time train!(m, iterations = 20,callback=cb)
-
+@time train!(m, iterations =10, callback=cb)
+plot(Float64.(elbo_t))
 y_pred = predict_y(m,X)
 p1 = plotdata(X,y_pred,0.0)
 p2 = plotdata(X,y,0.8)
