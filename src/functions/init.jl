@@ -71,6 +71,16 @@ function check_implementation(model::Symbol,likelihood::L,inference::I) where {I
         else
             return false
         end
+    elseif likelihood isa LogisticHeavisideLikelihood
+        if inference isa AnalyticVI
+            return true
+        elseif model == :VGP && inference isa GibbsSampling
+            return true
+        # elseif inference isa MCIntegrationVI
+        #     return true
+        else
+            return false
+        end
     elseif likelihood isa PoissonLikelihood
         if inference isa AnalyticVI
             return true

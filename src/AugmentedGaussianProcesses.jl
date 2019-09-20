@@ -9,7 +9,7 @@ export AbstractGP, GP, VGP, SVGP, VStP
 export Likelihood,  RegressionLikelihood, ClassificationLikelihood, MultiClassLikelihood
 export GaussianLikelihood, StudentTLikelihood, LaplaceLikelihood, HeteroscedasticLikelihood
 export LogisticLikelihood, BayesianSVM
-export SoftMaxLikelihood, LogisticSoftMaxLikelihood
+export SoftMaxLikelihood, LogisticSoftMaxLikelihood, LogisticHeavisideLikelihood
 export PoissonLikelihood
 export Inference, Analytic, AnalyticVI, AnalyticSVI, GibbsSampling, MCIntegrationVI, MCIntegrationSVI, QuadratureVI, QuadratureSVI
 export NumericalVI, NumericalSVI

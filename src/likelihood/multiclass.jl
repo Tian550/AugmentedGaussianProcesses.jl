@@ -53,3 +53,4 @@ end
 
 include("softmax.jl")
 include("logisticsoftmax.jl")
+include("logisticheaviside.jl")
