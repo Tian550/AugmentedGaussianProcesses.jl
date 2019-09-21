@@ -108,6 +108,20 @@ function local_updates!(model::SVGP{T,LogisticHeavisideLikelihood{T},AnalyticVI{
     end
 end
 
+function sample_local!(model::VGP{T,<:LogisticHeavisideLikelihood,<:GibbsSampling}) where {T}
+    pg = PolyaGammaDist()
+    for i in 1:model.nSample
+        k = model.likelihood.y_class[i]
+        for j in 1:model.nLatent
+            if k == j
+                model.likelihood.θ[k][i] = 0  ## Here, θ does not stand for expectation any more, rather PG variable.
+            else
+                model.likelihood.θ[j][i] = draw(pg,1,model.μ[k][i]-model.μ[j][i])
+            end
+        end
+    end
+    return nothing
+end
 
 ## Global Gradient Section ##
 
