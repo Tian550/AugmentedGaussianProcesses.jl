@@ -195,11 +195,11 @@ function expecLogLikelihood(model::VGP{T,<:LogisticHeavisideLikelihood,<:Analyti
             else
                 tot +=  0.5*(model.μ[k][i]-model.μ[j][i]-
                         (abs2(model.μ[k][i])+abs2(model.μ[j][i])+model.Σ[k][i,i] +
-                        model.Σ[j][i,i])*model.likelihood.θ[j][i])
+                        model.Σ[j][i,i])*model.likelihood.θ[j][i]) - logtwo
             end
         end
     end
-    tot -= model.nSample*logtwo
+    # tot -= model.nSample*logtwo
     return tot
 end
 
@@ -217,11 +217,11 @@ function expecLogLikelihood(model::SVGP{T,<:LogisticHeavisideLikelihood,<:Analyt
                             abs2(dot(view(model.κ[j],i,:),model.μ[j])) +
                             transpose(view(model.κ[k],i,:)) * model.Σ[k] * view(model.κ[k],i,:) +
                             transpose(view(model.κ[j],i,:)) * model.Σ[j] * view(model.κ[j],i,:)) *
-                            model.likelihood.θ[j][i])
+                            model.likelihood.θ[j][i]) - logtwo
             end
         end
     end
-    tot -= model.inference.nSamplesUsed*logtwo
+    # tot -= model.inference.nSamplesUsed*logtwo
     return model.inference.ρ*tot
 end
 
@@ -258,7 +258,7 @@ function PolyaGammaKL(model::SVGP{T,<:LogisticHeavisideLikelihood,<:AnalyticVI})
 end
 
 function sample_global!(model::VGP{T,<:LogisticHeavisideLikelihood,<:GibbsSampling}) where {T}
-    model.Σ .= inv.(Symmetric.(Diagonal.(2.0.*∇E_Σ(model)).+model.invKnn))
+    model.Σ .= inv.(Symmetric.(Diagonal.(∇E_Σ(model)).+model.invKnn))
     model.μ .= rand.(MvNormal.(model.Σ.*(∇E_μ(model).+model.invKnn.*model.μ₀),model.Σ))
     return nothing
 end
