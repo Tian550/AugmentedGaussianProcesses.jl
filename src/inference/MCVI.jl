@@ -15,8 +15,8 @@ mutable struct MCIntegrationVI{T<:Real} <: NumericalVI{T}
     λ::AbstractVector{AbstractVector}
     x::SubArray{T,2,Matrix{T}}#,Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}}},true}
     y::LatentArray{SubArray}
-    function MCIntegrationVI{T}(ϵ::T,nMC::Integer,nIter::Integer,optimizer::Opt,Stochastic::Bool,nSamplesUsed::Integer=1) where {T<:Real,Opt<:Optimizer}
-        return new{T}(ϵ,nIter,[optimizer],[optimizer],nMC,Stochastic,1,nSamplesUsed)
+    function MCIntegrationVI{T}(ϵ::T,nMC::Integer,nIter::Integer,optimizer::AbstractVector{<:Optimizer},Stochastic::Bool,nSamplesUsed::Integer=1) where {T<:Real,Opt<:Optimizer}
+        return new{T}(ϵ,nIter,optimizer,nMC,Stochastic,1,nSamplesUsed)
     end
 end
 
@@ -31,7 +31,7 @@ Constructor for Variational Inference via MC Integration approximation.
     - `optimizer::Optimizer` : Optimizer used for the variational updates. Should be an Optimizer object from the [GradDescent.jl]() package. Default is `Adam()`
 """
 function MCIntegrationVI(;ϵ::T=1e-5,nMC::Integer=1000,optimizer::Optimizer=Momentum(η=0.01)) where {T<:Real}
-    MCIntegrationVI{T}(ϵ,nMC,0,optimizer,false,1)
+    MCIntegrationVI{T}(ϵ,nMC,0,[optimizer],false,1)
 end
 
 """ `MCIntegrationSVI(;ϵ::T=1e-5,nMC::Integer=1000,optimizer::Optimizer=Adam(α=0.1))`
@@ -49,7 +49,7 @@ Constructor for Stochastic Variational Inference via MC integration approximatio
     - `optimizer::Optimizer` : Optimizer used for the variational updates. Should be an Optimizer object from the [GradDescent.jl]() package. Default is `Adam()`
 """
 function MCIntegrationSVI(nMinibatch::Integer;ϵ::T=1e-5,nMC::Integer=200,optimizer::Optimizer=Momentum(η=0.001)) where {T<:Real}
-    MCIntegrationVI{T}(ϵ,nMC,0,optimizer,true,nMinibatch)
+    MCIntegrationVI{T}(ϵ,nMC,0,[optimizer],true,nMinibatch)
 end
 
 function compute_grad_expectations!(model::VGP{T,L,<:MCIntegrationVI}) where {T,L}
