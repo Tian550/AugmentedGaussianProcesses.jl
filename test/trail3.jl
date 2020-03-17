@@ -6,7 +6,7 @@ using StatsBase
 using StatsFuns
 
 using CSV
-data = CSV.read("C:\\Users\\Tian550\\.julia\\dev\\AugmentedGaussianProcesses\\test\\glass.csv")
+data = CSV.read("C:\\Users\\Dell\\.julia\\dev\\AugmentedGaussianProcesses\\test\\glass.csv")
 y = convert(Vector{Float64},data[11])
 X = convert(Array{Float64},data[1:10])
 

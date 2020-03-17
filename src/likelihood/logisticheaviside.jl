@@ -78,7 +78,7 @@ function local_updates!(model::VGP{T,LogisticHeavisideLikelihood{T},AnalyticVI{T
                 model.likelihood.θ[k][i] = 0
             else
                 t = model.nFeatures ## t is the number of row elements
-                model.likelihood.c[j][i] = sqrt((model.μ[k][i])^2 + (model.μ[j][i])^2 + model.Σ[k][(i-1)*t+i] + model.Σ[j][(i-1)*t+i])
+                model.likelihood.c[j][i] = sqrt((model.μ[k][i])^2 + (model.μ[j][i])^2 + model.Σ[k][(i-1)*t+i] + model.Σ[j][(i-1)*t+i] - 2*model.μ[k][i]*model.μ[j][i])
                 model.likelihood.θ[j][i] = 0.5*(1/model.likelihood.c[j][i])*(exp(model.likelihood.c[j][i])-1)/(1+exp(model.likelihood.c[j][i]))
             end
         end
@@ -99,7 +99,8 @@ function local_updates!(model::SVGP{T,LogisticHeavisideLikelihood{T},AnalyticVI{
                                             transpose(view(model.κ[k],i,:)) * model.Σ[k] * view(model.κ[k],i,:) +
                                             transpose(view(model.κ[j],i,:)) * model.Σ[j] * view(model.κ[j],i,:) +
                                             model.K̃[j][i] +
-                                            model.K̃[k][i])
+                                            model.K̃[k][i] -
+                                            2* dot(view(model.κ[j],i,:),model.μ[j])*dot(view(model.κ[k],i,:),model.μ[k]))
                 model.likelihood.θ[j][i] = 0.5*(1/model.likelihood.c[j][i])*(exp(model.likelihood.c[j][i])-1)/(1+exp(model.likelihood.c[j][i]))
             end
         end
@@ -195,7 +196,7 @@ function expecLogLikelihood(model::VGP{T,<:LogisticHeavisideLikelihood,<:Analyti
             else
                 tot +=  0.5*(model.μ[k][i]-model.μ[j][i]-
                         (abs2(model.μ[k][i])+abs2(model.μ[j][i])+model.Σ[k][i,i] +
-                        model.Σ[j][i,i])*model.likelihood.θ[j][i]) - logtwo
+                        model.Σ[j][i,i] - 2*model.μ[k][i]*model.μ[j][i])*model.likelihood.θ[j][i]) - logtwo
             end
         end
     end
@@ -216,7 +217,8 @@ function expecLogLikelihood(model::SVGP{T,<:LogisticHeavisideLikelihood,<:Analyt
                             (abs2(dot(view(model.κ[k],i,:),model.μ[k])) +
                             abs2(dot(view(model.κ[j],i,:),model.μ[j])) +
                             transpose(view(model.κ[k],i,:)) * model.Σ[k] * view(model.κ[k],i,:) +
-                            transpose(view(model.κ[j],i,:)) * model.Σ[j] * view(model.κ[j],i,:)) *
+                            transpose(view(model.κ[j],i,:)) * model.Σ[j] * view(model.κ[j],i,:) -
+                            2*dot(view(model.κ[k],i,:),model.μ[k])*dot(view(model.κ[j],i,:),model.μ[j])) *
                             model.likelihood.θ[j][i]) - logtwo
             end
         end
@@ -228,12 +230,12 @@ end
 function PolyaGammaKL(model::VGP{T,<:LogisticHeavisideLikelihood,<:AnalyticVI}) where {T}
     tot = 0
     for i in 1:model.nSample
+        k = model.likelihood.y_class[i]
         for j in 1:model.nLatent
-            k = model.likelihood.y_class[i]
             if k == j
                 continue
             else
-                tot += -log(cosh(0.5*model.likelihood.c[j][i])) + 0.5*abs2(model.likelihood.c[j][i])*model.likelihood.θ[j][i]
+                tot += -logcosh(0.5*model.likelihood.c[j][i]) + 0.5*abs2(model.likelihood.c[j][i])*model.likelihood.θ[j][i]
             end
         end
     end

@@ -65,10 +65,47 @@ function plotdata1(X,Y,title)
     return p
 end;
 
-kernel = RBFKernel(1.0,variance=10.0)
-m = SVGP(X, y, kernel,LogisticSoftMaxLikelihood(),AnalyticSVI(50),num_inducing,verbose=3,optimizer=false)
+kernel = RBFKernel(1.0,variance=2.0)
+m = VGP(X, y, kernel, LogisticHeavisideLikelihood(), AnalyticVI(), verbose=3,optimizer=false)
 
-@time train!(m, iterations = 20)
+@time train!(m, iterations = 20, callback = cb)
+y_pred = predict_y(m,X)
+SVGP_p1 = plotdata1(X,y_pred,"predictive result")
+SVGP_p2 = plotdata1(X,y,"original data")
+
+SVGP_p1 = plot(SVGP_p1,xlabel="x1",
+        ylabel="x2",
+        xtickfont=font(18),
+        ytickfont=font(18),
+        guidefont=font(18),
+        legendfont=font(18))
+
+SVGP_p2 = plot(SVGP_p2,xlabel="x1",
+        ylabel="x2",
+        xtickfont=font(18),
+        ytickfont=font(18),
+        guidefont=font(18),
+        legendfont=font(18))
+
+savefig(SVGP_p1, "expresult\\SVGP_p1")
+savefig(SVGP_p2, "expresult\\SVGP_p2")
+
+VGP_ELBO = plot(elbo_t, title = "ELBO monitor",
+            xlabel="iteration",
+            ylabel="ELBO value",
+            lab = "ELBO trend",
+            legend = :bottomright,
+            xtickfont=font(18),
+            ytickfont=font(18),
+            guidefont=font(18),
+            legendfont=font(12))
+
+VGP_ELBO
+
+savefig(SVGP_ELBO, "expresult\\SVGP_ELBO")
+
+
+
 AGP.expecLogLikelihood(m)
 
 VGP_ELBO = plot(Float64.(elbo_t),xaxis = "iterations", yaxis="ELBO Value",lab="ELBO")
@@ -95,9 +132,9 @@ kernel = AGP.RBFKernel(1.0,variance=2.0)
 alsmmodel = VGP(X,y,kernel_alsm,LogisticSoftMaxLikelihood(),AnalyticVI(),verbose=2,optimizer=false)
 
 ## Aug. Logistic Heaviside
-alhsmodel = VGP(X,y,kernel,LogisticHeavisideLikelihood(),AnalyticVI(),verbose=2,optimizer=false)
+alhsmodel = SVGP(X,y,kernel,LogisticHeavisideLikelihood(),AnalyticVI(),num_inducing,verbose=2,optimizer=false)
 
-@time train!(alhsmodel,iterations=400)
+@time train!(alhsmodel,iterations=200)
 
 y_alhs = proba_y(alhsmodel,X)
 μ_alhs,σ_alhs = predict_f(alhsmodel,X,covf=true)

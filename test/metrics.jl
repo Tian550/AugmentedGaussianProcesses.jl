@@ -3,6 +3,7 @@ using DelimitedFiles
 # using Plots
 using Formatting
 using Plots
+Plots.scalefontsizes(2)
 # R"library(CalibratR)"
 cbpalette = [RGB(p...) for p in [[0.0, 0.447059, 0.698039],
  [0.0, 0.619608, 0.45098],
